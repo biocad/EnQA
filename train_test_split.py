@@ -12,11 +12,13 @@ def split_train_test(input_path: str, valid: bool=False) -> None:
     @return: None
     """
     complex_names = os.listdir(input_path)
-    complex_train, complex_test = train_test_split(complex_names, test_size=0.1, random_state=42) 
     if valid:
-        complex_train, complex_valid = train_test_split(complex_names, test_size=0.1, random_state=42) 
+        complex_train, complex_test = train_test_split(complex_names, test_size=0.2, random_state=42) 
+        complex_test, complex_valid =  train_test_split(complex_test, test_size=0.5, random_state=42)
         with open('valid.txt', 'w') as f:
             f.write('\n'.join(complex_valid))
+    else:
+        complex_train, complex_test = train_test_split(complex_names, test_size=0.1, random_state=42) 
     with open('train.txt', 'w') as f:
         f.write('\n'.join(complex_train))
     with open('test.txt', 'w') as f:

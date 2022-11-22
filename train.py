@@ -1,5 +1,6 @@
 import os
 import argparse
+import warnings
 
 import torch
 import torch.nn.functional as F
@@ -12,8 +13,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Predict model quality and output numpy array format.')
     parser.add_argument('--train', type=str, required=True,
                         help='Path to train feature dataset.')
+    parser.add_argument('--set-train', type=str, required=False, default='train.txt',
+                        help='Path to txt file with train sample names')
     parser.add_argument('--validation', type=str, required=True,
                         help='Path to validation feature dataset.')
+    parser.add_argument('--set-validation', type=str, required=True, default='valid.txt',
+                        help='Path to txt file with validation sample names')
     parser.add_argument('--output', type=str, required=True,
                         help='Path to save model weights.')
     parser.add_argument('--cpu', action='store_true', default=False, help='Force to use CPU.')
@@ -37,15 +42,20 @@ if __name__ == '__main__':
     model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
+    with open(args.set_train) as f:
+        train_sample=f.read().splitlines()
+    with open(args.set_validation) as f:
+        val_sample=f.read().splitlines()
     for i in range(args.epochs):
         train_loss_sum = 0
         total_size = 0
         model.train()
-        for sample in tqdm(os.listdir(args.train)):
-            if not sample.endswith('.pt'):
+        for sample in tqdm(train_sample):
+            path_sample=args.train + '/' + sample+'.pt'
+            if not os.path.exists(path_sample):
+                warnings.warn(f'File with fatures for {sample} does not exists in {args.train}')
                 continue
-
-            x = torch.load(args.train + '/' + sample)
+            x = torch.load(args.train + '/' + sample+'.pt')
             f1d = x['f1d'].to(device)
             f2d = x['f2d'].to(device)
             pos = x['pos'].to(device)
@@ -76,11 +86,12 @@ if __name__ == '__main__':
         val_loss_sum = 0
         total_size = 0
         model.eval()
-        for sample in os.listdir(args.validation):
-            if not sample.endswith('.pt'):
+        for sample in val_sample:
+            path_sample_val=args.validation + '/' + sample+'.pt'
+            if not os.path.exists(path_sample_val):
+                warnings.warn(f'File with fatures for {sample} does not exists in {args.validation}')
                 continue
-
-            x = torch.load(args.validation + '/' + sample)
+            x = torch.load(args.validation + '/' + sample+'.pt')
             f1d = x['f1d'].to(device)
             f2d = x['f2d'].to(device)
             pos = x['pos'].to(device)
@@ -109,3 +120,5 @@ if __name__ == '__main__':
     torch.save(model.state_dict(), os.path.join(args.output, 'model_weights.pth'))
 
 # python3 train.py --train outputs/processed/ --validation outputs/processed/ --output outputs/ --epochs 15
+# python3 train.py --train /mnt/volume/features/outputs_vacation/processed --validation /mnt/volume/features/outputs_vacation/processed --output outputs/ --epochs
+# python3 train.py --train /mnt/volume/features/outputs_vacation/processed --validation /mnt/volume/features/outputs_vacation/processed --output outputs/ --epochs 1 --set-train train_small.txt --set-validation valid_small.txt 
