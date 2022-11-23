@@ -11,7 +11,11 @@ def split_train_test(input_path: str, valid: bool=False) -> None:
     @param input_path: path to complexes.
     @return: None
     """
-    complex_names = os.listdir(input_path)
+    if os.path.isdir(input_path):
+        complex_names = os.listdir(input_path)
+    else:
+        with open(input_path, 'r') as f:
+            complex_names=f.read().splitlines()
     if valid:
         complex_train, complex_test = train_test_split(complex_names, test_size=0.2, random_state=42) 
         complex_test, complex_valid =  train_test_split(complex_test, test_size=0.5, random_state=42)
@@ -43,3 +47,4 @@ if __name__ == '__main__':
     split_train_test(args.input, args.valid)
 
 # python3 train_test_split.py --input '/mnt/volume_complex_lddt/consistent/'
+#python3 train_test_split.py --input complex_small.txt

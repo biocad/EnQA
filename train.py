@@ -46,7 +46,10 @@ if __name__ == '__main__':
         train_sample=f.read().splitlines()
     with open(args.set_validation) as f:
         val_sample=f.read().splitlines()
+    count_val_loss_decr=0
     for i in range(args.epochs):
+        if count_val_loss_decr>10:
+            break
         train_loss_sum = 0
         total_size = 0
         model.train()
@@ -114,11 +117,18 @@ if __name__ == '__main__':
 
             val_loss_sum += total_loss.detach().cpu()
             total_size += 1
-
+            if not i:
+                val_loss_prev=val_loss_sum
+            else:
+                if val_loss_sum<val_loss_prev:
+                    count_val_loss_decr=0
+                else:
+                    count_val_loss_decr+=1
+                val_loss_prev=val_loss_sum
         print("Epoch: {} Validation loss: {:.4f}".format(i, val_loss_sum / total_size))
 
     torch.save(model.state_dict(), os.path.join(args.output, 'model_weights.pth'))
 
 # python3 train.py --train outputs/processed/ --validation outputs/processed/ --output outputs/ --epochs 15
 # python3 train.py --train /mnt/volume/features/outputs_vacation/processed --validation /mnt/volume/features/outputs_vacation/processed --output outputs/ --epochs
-# python3 train.py --train /mnt/volume/features/outputs_vacation/processed --validation /mnt/volume/features/outputs_vacation/processed --output outputs/ --epochs 1 --set-train train_small.txt --set-validation valid_small.txt 
+# python3 train.py --train /mnt/volume/features/outputs_vacation/processed --validation /mnt/volume/features/outputs_vacation/processed --output outputs/ --epochs 2 --set-train train.txt --set-validation valid.txt 
