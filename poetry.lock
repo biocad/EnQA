@@ -38,38 +38,6 @@ optional = false
 python-versions = ">=3.8"
 
 [[package]]
-name = "nvidia-cublas-cu11"
-version = "11.10.3.66"
-description = "CUBLAS native runtime libraries"
-category = "main"
-optional = false
-python-versions = ">=3"
-
-[[package]]
-name = "nvidia-cuda-nvrtc-cu11"
-version = "11.7.99"
-description = "NVRTC native runtime libraries"
-category = "main"
-optional = false
-python-versions = ">=3"
-
-[[package]]
-name = "nvidia-cuda-runtime-cu11"
-version = "11.7.99"
-description = "CUDA Runtime native Libraries"
-category = "main"
-optional = false
-python-versions = ">=3"
-
-[[package]]
-name = "nvidia-cudnn-cu11"
-version = "8.5.0.96"
-description = "cuDNN runtime libraries"
-category = "main"
-optional = false
-python-versions = ">=3"
-
-[[package]]
 name = "pandas"
 version = "1.5.2"
 description = "Powerful data structures for data analysis, time series, and statistics"
@@ -142,21 +110,14 @@ python-versions = "*"
 
 [[package]]
 name = "torch"
-version = "1.13.0"
+version = "1.10.2"
 description = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
 category = "main"
 optional = false
-python-versions = ">=3.7.0"
+python-versions = ">=3.6.2"
 
 [package.dependencies]
-nvidia-cublas-cu11 = "11.10.3.66"
-nvidia-cuda-nvrtc-cu11 = "11.7.99"
-nvidia-cuda-runtime-cu11 = "11.7.99"
-nvidia-cudnn-cu11 = "8.5.0.96"
 typing-extensions = "*"
-
-[package.extras]
-opt-einsum = ["opt-einsum (>=3.3)"]
 
 [[package]]
 name = "tqdm"
@@ -186,17 +147,13 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "cf43dbafa2b5bd6c297c0ce5404da1bda5ed889df7279e90d1c065e2ca368f31"
+content-hash = "3e44278771602750c88dea8651068e081dfd41ce904f8c820648b79f4a812826"
 
 [metadata.files]
 biopandas = []
 biopython = []
 colorama = []
 numpy = []
-nvidia-cublas-cu11 = []
-nvidia-cuda-nvrtc-cu11 = []
-nvidia-cuda-runtime-cu11 = []
-nvidia-cudnn-cu11 = []
 pandas = []
 python-dateutil = []
 pytz = []
