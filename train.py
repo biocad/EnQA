@@ -69,7 +69,7 @@ if __name__ == '__main__':
             diff_bins = x['diff_bins'].to(device)
             pos_transformed = x['pos_transformed'].to(device)
 
-            pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el, cmap)
+            pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el)
     
 
             loss_score = F.smooth_l1_loss(pred_lddt, label_lddt)
@@ -106,7 +106,7 @@ if __name__ == '__main__':
             diff_bins = x['diff_bins'].to(device)
             pos_transformed = x['pos_transformed'].to(device)
             with torch.no_grad():
-                pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el, cmap)
+                pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el)
            
 
             loss_score = F.smooth_l1_loss(pred_lddt, label_lddt)
@@ -130,5 +130,5 @@ if __name__ == '__main__':
     torch.save(model.state_dict(), os.path.join(args.output, 'model_weights.pth'))
 
 # python3 train.py --train outputs/processed/ --validation outputs/processed/ --output outputs/ --epochs 15
-# python3 train.py --train /mnt/volume/features/outputs_vacation/processed --validation /mnt/volume/features/outputs_vacation/processed --output outputs/ --epochs
-# python3 train.py --train /mnt/volume/features/outputs_vacation/processed --validation /mnt/volume/features/outputs_vacation/processed --output outputs/ --epochs 2 --set-train train.txt --set-validation valid.txt 
+# python3 train.py --train /mnt/volume/outputs_vacation/processed --validation /mnt/volume/outputs_vacation/processed --output outputs/ --epochs
+# python3 train.py --train /mnt/volume/outputs_vacation/processed --validation /mnt/volume/outputs_vacation/processed --output outputs/ --epochs 2 --set-train train_small.txt --set-validation valid_small.txt 
