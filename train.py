@@ -1,12 +1,13 @@
 import os
 import argparse
+from pathlib import Path
 import warnings
 
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
-
+from metrics import get_interface, get_raw_mapping, get_values_from_lddt_predictions, get_values_from_lddt_results
 from network.resEGNN import resEGNN_with_ne
 
 if __name__ == '__main__':
@@ -37,6 +38,7 @@ if __name__ == '__main__':
     if not os.path.isdir(args.output):
         os.mkdir(args.output)
 
+    path_docked='/mnt/volume_complex_lddt/consistent'
     dim2d = 25 + 9 * 5
     model = resEGNN_with_ne(dim2d=dim2d, dim1d=33)
     model.to(device)
@@ -63,7 +65,6 @@ if __name__ == '__main__':
             f2d = x['f2d'].to(device)
             pos = x['pos'].to(device)
             el = [i.to(device) for i in x['el']]
-            cmap = x['cmap'].to(device)
 
             label_lddt = x['label_lddt'].to(device)
             diff_bins = x['diff_bins'].to(device)
@@ -71,8 +72,12 @@ if __name__ == '__main__':
 
             pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el)
     
-
-            loss_score = F.smooth_l1_loss(pred_lddt, label_lddt)
+            path_to_complex=Path(path_docked+'/'+sample)
+            mapping=get_raw_mapping(path_to_complex,'','real_joined.pdb','','real.pdb')
+            contacts=get_interface(Path(path_docked+'/'+sample+'/real.pdb'))
+            label_lddt_interface=get_values_from_lddt_results(path_to_complex, mapping, contacts)
+            pred_lddt_interface=get_values_from_lddt_predictions(path_to_complex, mapping, contacts,pred_lddt)
+            loss_score = F.smooth_l1_loss(pred_lddt_interface, torch.tensor(label_lddt_interface,device=device))
             loss_bin = F.cross_entropy(pred_bin, diff_bins)
             loss_dist = F.mse_loss(torch.nn.functional.pdist(pred_pos),
                                    torch.nn.functional.pdist(pos_transformed))
@@ -99,7 +104,6 @@ if __name__ == '__main__':
             f2d = x['f2d'].to(device)
             pos = x['pos'].to(device)
             el = [i.to(device) for i in x['el']]
-            cmap = x['cmap'].to(device)
         
 
             label_lddt = x['label_lddt'].to(device)
@@ -107,9 +111,13 @@ if __name__ == '__main__':
             pos_transformed = x['pos_transformed'].to(device)
             with torch.no_grad():
                 pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el)
-           
+            path_to_complex=Path(path_docked+'/'+sample)
+            mapping=get_raw_mapping(path_to_complex,'','real_joined.pdb','','real.pdb')
+            contacts=get_interface(Path(path_docked+'/'+sample+'/real.pdb'))
+            label_lddt_interface=get_values_from_lddt_results(path_to_complex, mapping, contacts)
+            pred_lddt_interface=get_values_from_lddt_predictions(path_to_complex, mapping, contacts,pred_lddt)
 
-            loss_score = F.smooth_l1_loss(pred_lddt, label_lddt)
+            loss_score = F.smooth_l1_loss(pred_lddt_interface, torch.tensor(label_lddt_interface,device=device))
             loss_bin = F.cross_entropy(pred_bin, diff_bins)
             loss_dist = F.mse_loss(torch.nn.functional.pdist(pred_pos),
                                    torch.nn.functional.pdist(pos_transformed))
@@ -117,14 +125,14 @@ if __name__ == '__main__':
 
             val_loss_sum += total_loss.detach().cpu()
             total_size += 1
-            if not i:
-                val_loss_prev=val_loss_sum
+        if not i:
+            val_loss_prev=val_loss_sum
+        else:
+            if val_loss_sum<val_loss_prev:
+                count_val_loss_decr=0
             else:
-                if val_loss_sum<val_loss_prev:
-                    count_val_loss_decr=0
-                else:
-                    count_val_loss_decr+=1
-                val_loss_prev=val_loss_sum
+                count_val_loss_decr+=1
+            val_loss_prev=val_loss_sum
         print("Epoch: {} Validation loss: {:.4f}".format(i, val_loss_sum / total_size))
 
     torch.save(model.state_dict(), os.path.join(args.output, 'model_weights.pth'))
