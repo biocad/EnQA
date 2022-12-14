@@ -7,8 +7,9 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
-from metrics import get_interface, get_raw_mapping, get_values_from_lddt_predictions, get_values_from_lddt_results
+from metrics import get_chains_to_merge, get_interface, get_raw_mapping, get_values_from_lddt_predictions, get_values_from_lddt_results, parse_chains
 from network.resEGNN import resEGNN_with_ne
+from pdb_utils_crank import merge_chains
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Predict model quality and output numpy array format.')
@@ -38,7 +39,7 @@ if __name__ == '__main__':
     if not os.path.isdir(args.output):
         os.mkdir(args.output)
 
-    path_docked='/mnt/volume_complex_lddt/consistent'
+    path_docked=Path('/mnt/volume_complex_lddt/consistent')
     dim2d = 25 + 9 * 5
     model = resEGNN_with_ne(dim2d=dim2d, dim1d=33)
     model.to(device)
@@ -72,9 +73,12 @@ if __name__ == '__main__':
 
             pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el)
     
-            path_to_complex=Path(path_docked+'/'+sample)
-            mapping=get_raw_mapping(path_to_complex,'','real_joined.pdb','','real.pdb')
-            contacts=get_interface(Path(path_docked+'/'+sample+'/real.pdb'))
+            path_to_complex=path_docked / sample
+            ab_chains,ag_chains=parse_chains(sample)
+            ab_chains,ag_chains=get_chains_to_merge(path_to_complex  / 'real.pdb',ab_chains)
+            merge_chains(ab_chains,ag_chains,'ref_temp.pdb')
+            mapping=get_raw_mapping(path_to_complex,joined_path=path_to_complex/'real_joined.pdb')
+            contacts=get_interface(Path('ref_temp.pdb'))
             label_lddt_interface=get_values_from_lddt_results(path_to_complex, mapping, contacts)
             pred_lddt_interface=get_values_from_lddt_predictions(path_to_complex, mapping, contacts,pred_lddt)
             loss_score = F.smooth_l1_loss(pred_lddt_interface, torch.tensor(label_lddt_interface,device=device))
@@ -111,9 +115,12 @@ if __name__ == '__main__':
             pos_transformed = x['pos_transformed'].to(device)
             with torch.no_grad():
                 pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el)
-            path_to_complex=Path(path_docked+'/'+sample)
-            mapping=get_raw_mapping(path_to_complex,'','real_joined.pdb','','real.pdb')
-            contacts=get_interface(Path(path_docked+'/'+sample+'/real.pdb'))
+            path_to_complex=path_docked / sample
+            ab_chains,ag_chains=parse_chains(sample)
+            ab_chains,ag_chains=get_chains_to_merge(path_to_complex  / 'real.pdb',ab_chains)
+            merge_chains(ab_chains,ag_chains,'ref_temp.pdb')
+            mapping=get_raw_mapping(path_to_complex,joined_path=path_to_complex/'real_joined.pdb')
+            contacts=get_interface(Path('ref_temp.pdb'))
             label_lddt_interface=get_values_from_lddt_results(path_to_complex, mapping, contacts)
             pred_lddt_interface=get_values_from_lddt_predictions(path_to_complex, mapping, contacts,pred_lddt)
 
@@ -139,4 +146,5 @@ if __name__ == '__main__':
 
 # python3 train.py --train outputs/processed/ --validation outputs/processed/ --output outputs/ --epochs 15
 # python3 train.py --train /mnt/volume/outputs_vacation/processed --validation /mnt/volume/outputs_vacation/processed --output outputs/ --epochs
-# python3 train.py --train /mnt/volume/outputs_vacation/processed --validation /mnt/volume/outputs_vacation/processed --output outputs/ --epochs 2 --set-train train_small.txt --set-validation valid_small.txt 
+# python3 train.py --train /mnt/volume/outputs_vacation/processed --validation /mnt/volume/outputs_vacation/processed --output outputs/ --epochs 2 --set-train train_small.txt --set-validation valid_small.txt
+# python3 train.py --train /mnt/volume/outputs_vacation/processed --validation /mnt/volume/outputs_vacation/processed --output outputs/ --epochs 2 --set-train train.txt --set-validation valid.txt 

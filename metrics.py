@@ -19,6 +19,15 @@ def get_chains_to_merge(path_to_structure, ab_chain_names):
             chains_to_merge_1.append(chain)
         else:
             chains_to_merge_2.append(chain)
+    if chains_to_merge_1:
+        return chains_to_merge_1, chains_to_merge_2
+    ab_chain_names=['A','B']
+    chains_to_merge_2 = []
+    for chain in struct[0].get_chains():
+        if chain.id in ab_chain_names:
+            chains_to_merge_1.append(chain)
+        else:
+            chains_to_merge_2.append(chain)
     return chains_to_merge_1, chains_to_merge_2
 
 def parse_chains(comp_name):
@@ -75,7 +84,7 @@ def get_raw_mapping(path_to_complex_dir,joined_name='joined',joined_path='joined
     
     parser = PDBParser()
     struct_joined = parser.get_structure(joined_name, path_to_complex_dir / joined_path)
-    struct_temp = parser.get_structure(temp_name, path_to_complex_dir / temp_path)
+    struct_temp = parser.get_structure(temp_name, temp_path)
     res_joined = list()
     for chn in struct_joined[0]:
         for res in chn:
