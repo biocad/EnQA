@@ -10,6 +10,7 @@ from tqdm import tqdm
 from metrics import get_chains_to_merge, get_interface, get_raw_mapping, get_values_from_lddt_predictions, get_values_from_lddt_results, parse_chains
 from network.resEGNN import resEGNN_with_ne
 from pdb_utils_crank import merge_chains
+from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Predict model quality and output numpy array format.')
@@ -50,9 +51,13 @@ if __name__ == '__main__':
     with open(args.set_validation) as f:
         val_sample=f.read().splitlines()
     count_val_loss_decr=0
+    writer = SummaryWriter()
     for i in range(args.epochs):
         if count_val_loss_decr>10:
             break
+        loss_score_train=0
+        loss_bin_train=0
+        loss_dist_train=0
         train_loss_sum = 0
         total_size = 0
         model.train()
@@ -86,6 +91,9 @@ if __name__ == '__main__':
             loss_dist = F.mse_loss(torch.nn.functional.pdist(pred_pos),
                                    torch.nn.functional.pdist(pos_transformed))
             total_loss = args.w_dist * loss_dist + args.w_bin * loss_bin + args.w_score * loss_score
+            loss_score_train+=loss_score
+            loss_bin_train+=loss_bin
+            loss_dist_train+=loss_dist
             train_loss_sum += total_loss.detach().cpu().tolist()
             total_size += 1
             if total_size % args.batch_size == 0:
@@ -94,7 +102,9 @@ if __name__ == '__main__':
                 optimizer.step()
 
         print("Epoch: {} Train loss: {:.4f}".format(i, train_loss_sum / total_size))
-
+        loss_score_valid=0
+        loss_bin_valid=0
+        loss_dist_valid=0
         val_loss_sum = 0
         total_size = 0
         model.eval()
@@ -129,6 +139,9 @@ if __name__ == '__main__':
             loss_dist = F.mse_loss(torch.nn.functional.pdist(pred_pos),
                                    torch.nn.functional.pdist(pos_transformed))
             total_loss = args.w_dist * loss_dist + args.w_bin * loss_bin + args.w_score * loss_score
+            loss_score_valid+=loss_score
+            loss_bin_valid+=loss_bin
+            loss_dist_valid+=loss_dist
 
             val_loss_sum += total_loss.detach().cpu()
             total_size += 1
@@ -141,7 +154,11 @@ if __name__ == '__main__':
                 count_val_loss_decr+=1
             val_loss_prev=val_loss_sum
         print("Epoch: {} Validation loss: {:.4f}".format(i, val_loss_sum / total_size))
-
+        writer.add_scalars('loss_score',{'train':loss_score_train/total_size,'validation':loss_score_train/total_size},i)
+        writer.add_scalars('loss_bin',{'train':loss_bin_train/total_size,'validation':loss_bin_train/total_size},i)
+        writer.add_scalars('loss_dist',{'train':loss_dist_train/total_size,'validation':loss_dist_train/total_size},i)
+        writer.add_scalars('total_loss',{'train':train_loss_sum / total_size,'validation':val_loss_sum/total_size},i)
+        writer.close()
     torch.save(model.state_dict(), os.path.join(args.output, 'model_weights.pth'))
 
 # python3 train.py --train outputs/processed/ --validation outputs/processed/ --output outputs/ --epochs 15
