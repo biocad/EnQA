@@ -226,7 +226,6 @@ def init_structure(chains: List[PDB.Chain.Chain]) -> Structure:
     new_struct.init_model("")
     new_struct = new_struct.get_structure()
     for chain in chains:
-        print(chain)
         new_struct[""].add(chain)
     
     return new_struct

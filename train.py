@@ -41,6 +41,7 @@ if __name__ == '__main__':
         os.mkdir(args.output)
 
     path_docked=Path('/mnt/volume_complex_lddt/consistent')
+    # /mnt/volume_complex_lddt/consistent_alpha_hedge
     dim2d = 25 + 9 * 5
     model = resEGNN_with_ne(dim2d=dim2d, dim1d=33)
     model.to(device)
@@ -59,7 +60,7 @@ if __name__ == '__main__':
         loss_bin_train=0
         loss_dist_train=0
         train_loss_sum = 0
-        total_size = 0
+        total_size_train = 0
         model.train()
         for sample in tqdm(train_sample):
             path_sample=args.train + '/' + sample+'.pt'
@@ -95,18 +96,18 @@ if __name__ == '__main__':
             loss_bin_train+=loss_bin
             loss_dist_train+=loss_dist
             train_loss_sum += total_loss.detach().cpu().tolist()
-            total_size += 1
-            if total_size % args.batch_size == 0:
+            total_size_train += 1
+            if total_size_train % args.batch_size == 0:
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
 
-        print("Epoch: {} Train loss: {:.4f}".format(i, train_loss_sum / total_size))
+        print("Epoch: {} Train loss: {:.4f}".format(i, train_loss_sum / total_size_train))
         loss_score_valid=0
         loss_bin_valid=0
         loss_dist_valid=0
         val_loss_sum = 0
-        total_size = 0
+        total_size_valid = 0
         model.eval()
         for sample in val_sample:
             path_sample_val=args.validation + '/' + sample+'.pt'
@@ -144,7 +145,7 @@ if __name__ == '__main__':
             loss_dist_valid+=loss_dist
 
             val_loss_sum += total_loss.detach().cpu()
-            total_size += 1
+            total_size_valid += 1
         if not i:
             val_loss_prev=val_loss_sum
         else:
@@ -153,11 +154,11 @@ if __name__ == '__main__':
             else:
                 count_val_loss_decr+=1
             val_loss_prev=val_loss_sum
-        print("Epoch: {} Validation loss: {:.4f}".format(i, val_loss_sum / total_size))
-        writer.add_scalars('loss_score',{'train':loss_score_train/total_size,'validation':loss_score_train/total_size},i)
-        writer.add_scalars('loss_bin',{'train':loss_bin_train/total_size,'validation':loss_bin_train/total_size},i)
-        writer.add_scalars('loss_dist',{'train':loss_dist_train/total_size,'validation':loss_dist_train/total_size},i)
-        writer.add_scalars('total_loss',{'train':train_loss_sum / total_size,'validation':val_loss_sum/total_size},i)
+        print("Epoch: {} Validation loss: {}".format(i, val_loss_sum / total_size_valid))
+        writer.add_scalars('loss_score',{'train':loss_score_train/total_size_train,'validation':loss_score_valid/total_size_valid},i)
+        writer.add_scalars('loss_bin',{'train':loss_bin_train/total_size_train,'validation':loss_bin_valid/total_size_valid},i)
+        writer.add_scalars('loss_dist',{'train':loss_dist_train/total_size_train,'validation':loss_dist_valid/total_size_valid},i)
+        writer.add_scalars('total_loss',{'train':train_loss_sum / total_size_train,'validation':val_loss_sum/total_size_valid},i)
         writer.close()
     torch.save(model.state_dict(), os.path.join(args.output, 'model_weights.pth'))
 
