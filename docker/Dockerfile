@@ -12,3 +12,5 @@ COPY pyproject.toml poetry.lock poetry-env /EnQA/
 
 RUN --mount=type=secret,id=poetry,target=/poetry-env . /poetry-env && \
 	cd /EnQA && poetry install --no-interaction --no-ansi --no-dev
+
+RUN pip install setuptools==59.5.0
