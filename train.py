@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
-from metrics import get_chains_to_merge, get_interface, get_raw_mapping, get_values_from_lddt_predictions, get_values_from_lddt_results, parse_chains
+from metrics import lddt_by_interface
 from network.resEGNN import resEGNN_with_ne
 from pdb_utils_crank import merge_chains
 from torch.utils.tensorboard import SummaryWriter
@@ -78,15 +78,7 @@ if __name__ == '__main__':
             pos_transformed = x['pos_transformed'].to(device)
 
             pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el)
-    
-            path_to_complex=path_docked / sample
-            ab_chains,ag_chains=parse_chains(sample)
-            ab_chains,ag_chains=get_chains_to_merge(path_to_complex  / 'real.pdb',ab_chains)
-            merge_chains(ab_chains,ag_chains,'ref_temp.pdb')
-            mapping=get_raw_mapping(path_to_complex,joined_path=path_to_complex/'real_joined.pdb')
-            contacts=get_interface(Path('ref_temp.pdb'))
-            label_lddt_interface=get_values_from_lddt_results(path_to_complex, mapping, contacts)
-            pred_lddt_interface=get_values_from_lddt_predictions(path_to_complex, mapping, contacts,pred_lddt)
+            pred_lddt_interface, label_lddt_interface=lddt_by_interface(path_docked,sample,pred_lddt)
             loss_score = F.smooth_l1_loss(pred_lddt_interface, torch.tensor(label_lddt_interface,device=device))
             loss_bin = F.cross_entropy(pred_bin, diff_bins)
             loss_dist = F.mse_loss(torch.nn.functional.pdist(pred_pos),
@@ -126,15 +118,7 @@ if __name__ == '__main__':
             pos_transformed = x['pos_transformed'].to(device)
             with torch.no_grad():
                 pred_bin, pred_pos, pred_lddt = model(f1d, f2d, pos, el)
-            path_to_complex=path_docked / sample
-            ab_chains,ag_chains=parse_chains(sample)
-            ab_chains,ag_chains=get_chains_to_merge(path_to_complex  / 'real.pdb',ab_chains)
-            merge_chains(ab_chains,ag_chains,'ref_temp.pdb')
-            mapping=get_raw_mapping(path_to_complex,joined_path=path_to_complex/'real_joined.pdb')
-            contacts=get_interface(Path('ref_temp.pdb'))
-            label_lddt_interface=get_values_from_lddt_results(path_to_complex, mapping, contacts)
-            pred_lddt_interface=get_values_from_lddt_predictions(path_to_complex, mapping, contacts,pred_lddt)
-
+            pred_lddt_interface, label_lddt_interface=lddt_by_interface(path_docked,sample,pred_lddt)
             loss_score = F.smooth_l1_loss(pred_lddt_interface, torch.tensor(label_lddt_interface,device=device))
             loss_bin = F.cross_entropy(pred_bin, diff_bins)
             loss_dist = F.mse_loss(torch.nn.functional.pdist(pred_pos),

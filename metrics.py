@@ -7,9 +7,9 @@ from pdb2sql.superpose import superpose
 from Bio.PDB.PDBParser import PDBParser
 from pdb2sql import interface
 from pdb_utils_crank import merge_chains
-import torch
+from torch import tensor
 
-def get_chains_to_merge(path_to_structure, ab_chain_names):
+def get_chains_to_merge(path_to_structure:Path, ab_chain_names:list[str]):
     chains_to_merge_1 = []
     chains_to_merge_2 = []
     parser = PDBParser()
@@ -30,31 +30,15 @@ def get_chains_to_merge(path_to_structure, ab_chain_names):
             chains_to_merge_2.append(chain)
     return chains_to_merge_1, chains_to_merge_2
 
-def parse_chains(comp_name):
+def parse_chains(comp_name:str):
     _, chains, _ = comp_name.split('_')
     ab_chains, ag_chains = chains.split('-')
     ab_chains_list = ab_chains.split('+')
     ag_chains_list = ag_chains.split('+')
     return ab_chains_list, ag_chains_list
 
-def calculate_fnat(path_to_docked_structure, path_to_reference_structure, ab_chains):
-    #here we calculate FNAT with pdb2sql
-    decoy = path_to_docked_structure
-    ref = path_to_reference_structure
-    
-    ab_docked, ag_docked = get_chains_to_merge(path_to_docked_structure, ab_chains)
-    ab_ref, ag_ref = get_chains_to_merge(path_to_reference_structure, ab_chains)
-    merge_chains(ab_docked, ag_docked, "docked_temp.pdb")
-    merge_chains(ab_ref, ag_ref, "ref_temp.pdb")
-    decoy = "docked_temp.pdb"
-    ref = "ref_temp.pdb"
-    # get here structure with neccessary format
 
-    sim = StructureSimilarity(decoy,ref)
-    fnat = sim.compute_fnat_pdb2sql()
-    return fnat
-
-def calculate_rmsd(path_to_docked_structure, path_to_reference_structure, ab_chains):
+def calculate_rmsd(path_to_docked_structure:Path, path_to_reference_structure:Path, ab_chains:list[str]):
     ab_docked, ag_docked = get_chains_to_merge(path_to_docked_structure, ab_chains)
     ab_ref, ag_ref = get_chains_to_merge(path_to_reference_structure, ab_chains)
     parent_path = path_to_docked_structure.parent
@@ -79,7 +63,7 @@ def get_interface(path_to_structure: Path, threshold: float = 8.5):
     return contacts
 
 
-def get_raw_mapping(path_to_complex_dir,joined_name='joined',joined_path='joined_real.pdb',temp_name='real_temp',temp_path='ref_temp.pdb'):
+def get_raw_mapping(path_to_complex_dir:Path,joined_name:str='joined',joined_path:str='joined_real.pdb',temp_name:str='real_temp',temp_path:str='ref_temp.pdb'):
     mapping_res = dict()
     
     parser = PDBParser()
@@ -105,7 +89,7 @@ def get_raw_mapping(path_to_complex_dir,joined_name='joined',joined_path='joined
 def read_lddt(path: Path):
     return pd.read_table(path, sep='\t', skiprows=10)
 
-def get_values_from_lddt_results(path_to_complex, mapping, contacts,lddt_list=None):
+def get_values_from_lddt_results(path_to_complex:Path, mapping:dict, contacts:dict,lddt_list:list[float]=None):
     lddt = read_lddt(path_to_complex / "lddt.csv")
     if lddt_list is not None:
         lddt['Score']=lddt_list.item()
@@ -125,7 +109,7 @@ def get_values_from_lddt_results(path_to_complex, mapping, contacts,lddt_list=No
     return lddts
     
 
-def get_lddt_by_interface_and_irmsd(path_to_complex_dir, threshold=6.5):
+def get_lddt_by_interface_and_irmsd(path_to_complex_dir:Path, threshold:float=6.5):
     ab_chains = ['A', 'B']
     irmsd, lrmsd = calculate_rmsd(path_to_complex_dir / "docked.pdb", path_to_complex_dir / "real.pdb", ab_chains)
     contacts = get_interface(path_to_complex_dir / "ref_temp.pdb", threshold=threshold)
@@ -136,22 +120,8 @@ def get_lddt_by_interface_and_irmsd(path_to_complex_dir, threshold=6.5):
     
     return mean_lddt, irmsd, lrmsd
 
-def get_lddt_by_interface_and_irmsd_no_hardcode(path_to_complex_dir, threshold=6.5):
-    ab_chains = ['A', 'B']
-    irmsd, lrmsd = calculate_rmsd(path_to_complex_dir / "docked.pdb", path_to_complex_dir / "real.pdb", ab_chains)
-    contacts = get_interface(path_to_complex_dir / "ref_temp.pdb", threshold=threshold)
-    mapping = get_raw_mapping(path_to_complex_dir)
-    lddts = get_values_from_lddt_results(path_to_complex_dir, mapping, contacts)
-    
-    mean_lddt = sum(lddts) / len(lddts)
-    
-    return mean_lddt, irmsd, lrmsd
 
-def calculate_dockq():
-    #TBA
-    pass
-
-def get_values_from_lddt_predictions(path_to_complex, mapping, contacts,lddt_list):
+def get_values_from_lddt_predictions(path_to_complex:Path, mapping:dict, contacts:dict,lddt_list:list[float]):
     lddt = read_lddt(path_to_complex / "lddt.csv")
     aa_to_lddt = dict()
     for index, row in lddt.iterrows():
@@ -163,4 +133,15 @@ def get_values_from_lddt_predictions(path_to_complex, mapping, contacts,lddt_lis
     for aa in all_contacts:
         mapped = mapping[aa]
         lddts.append(aa_to_lddt[mapped])
-    return lddt_list[torch.tensor(lddts)]
+    return lddt_list[tensor(lddts)]
+
+def lddt_by_interface(path_docked:Path,sample:str,pred_lddt):
+    path_to_complex=path_docked / sample
+    ab_chains,ag_chains=parse_chains(sample)
+    ab_chains,ag_chains=get_chains_to_merge(path_to_complex  / 'real.pdb',ab_chains)
+    merge_chains(ab_chains,ag_chains,'ref_temp.pdb')
+    mapping=get_raw_mapping(path_to_complex,joined_path=path_to_complex/'real_joined.pdb')
+    contacts=get_interface(Path('ref_temp.pdb'))
+    label_lddt_interface=get_values_from_lddt_results(path_to_complex, mapping, contacts)
+    pred_lddt_interface=get_values_from_lddt_predictions(path_to_complex, mapping, contacts,pred_lddt)
+    return pred_lddt_interface,label_lddt_interface
