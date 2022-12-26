@@ -243,7 +243,7 @@ class resEGNN_with_ne(torch.nn.Module):
                                              initial_projection=True,
                                              extra_blocks=True))
         self.add_module("conv2d_bin", torch.nn.Conv2d(self.num_channel, self.bin_num, 1, padding=0, bias=True))
-        self.add_module("EGNN_layers", EGNN_ne(in_node_nf=self.num_channel // 2 + 1,
+        self.add_module("EGNN_layers", EGNN_ne(in_node_nf=self.num_channel // 2,
                                                hidden_nf=self.num_channel, out_node_nf=1,
                                                in_edge_nf=self.num_channel + 9))
 
@@ -264,7 +264,7 @@ class resEGNN_with_ne(torch.nn.Module):
 
         return 0.25 * (4.0 * p0 + 3.0 * p1 + 2.0 * p2 + p3) / p4
 
-    def forward(self, f1d, f2d, pos, el, cmap):
+    def forward(self, f1d, f2d, pos, el):
         len_x = f1d.shape[-1]
         out_conv1d_1 = F.elu(self._modules["conv1d_1"](f1d))
         f1d_tile = torch.cat((torch.repeat_interleave(out_conv1d_1.unsqueeze(2), repeats=len_x, dim=2),
@@ -280,13 +280,11 @@ class resEGNN_with_ne(torch.nn.Module):
         out_bin_predictor = F.elu(self._modules["bin_resnet"](out_base_resnet))
         bin_prediction = self._modules["conv2d_bin"](out_bin_predictor)
         bin_prediction = (bin_prediction + bin_prediction.permute(0, 1, 3, 2)) / 2
-        estogram_prediction = F.softmax(bin_prediction, dim=1)
-        lddt_prediction = self.calculate_LDDT(estogram_prediction.squeeze(), cmap.squeeze())
         edge_features = torch.cat([out_base_resnet, bin_prediction], dim=1)
         edge_features = edge_features[0, :, el[0], el[1]].transpose(0, 1)
-        node_features = torch.cat((out_conv1d_1.permute(0, 2, 1).squeeze(), lddt_prediction.unsqueeze(1)), dim=1)
+        node_features = out_conv1d_1.permute(0, 2, 1).squeeze()
         node_features, pos_new = self._modules["EGNN_layers"](node_features, pos, el, edge_features)
-        lddt_prediction_final = lddt_prediction + torch.tanh(node_features.squeeze())
+        lddt_prediction_final = torch.sigmoid(node_features.squeeze())
         return bin_prediction, pos_new, lddt_prediction_final
 
 
