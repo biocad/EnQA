@@ -33,10 +33,11 @@ def create_docked_equals_real(path_to_structures:Path,prefix:str='real',files_re
     lddt.to_csv(dir_name/file_lddt)
     return dir_name.name
 
-def get_sample(path_to_structures: Path,size_ids=100,size_constraits=5,size_non_constraits=5,size_real=1,prefix_real='real',seed =42):
+def get_sample(path_to_structures: Path, test_set:list[str], size_ids = 100,size_constraits = 5,size_non_constraits = 5,size_real = 1,prefix_real = 'real',seed = 42):
     random.seed(seed)
     complex_dirs = os.listdir(path_to_structures)
     pdb_ids=get_ids_for_benchmark(path_to_structures)
+    pdb_ids=set(pdb_ids)-set(test_set)
     sample_ids=random.sample(pdb_ids,size_ids)
     sample_list=[]
     for id in sample_ids:
@@ -52,8 +53,14 @@ def get_sample(path_to_structures: Path,size_ids=100,size_constraits=5,size_non_
         a=create_docked_equals_real(path_to_structures/sample_list_id[0],prefix=prefix_real)
         sample_list_id+=size_real*[a]
         sample_list+=sample_list_id
-    return(sample_list)
+    return sample_list
     
+def list_from_file(path:str):
+    with open(path,'r') as f:
+        lines = [line.rstrip('\n') for line in f]
+    return lines
+
 if __name__=='__main__':
-    a=get_sample(Path('/mnt/volume_complex_lddt/consistent_alpha_hedge'))
+    test_set=list_from_file('benchmark_ids.txt')
+    a=get_sample(Path('/mnt/volume_complex_lddt/consistent_alpha_hedge'),test_set)
     print(*a,sep='\n')
