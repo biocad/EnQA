@@ -41,18 +41,18 @@ def get_sample(path_to_structures: Path, test_set:list[str], size_ids = 100,size
     sample_ids=random.sample(pdb_ids,size_ids)
     sample_list=[]
     for id in sample_ids:
-        sample_list_id=[]
+        sample_list_id=[] # list of structures with ID==id
         if size_constraits>0:
             r=compile(fr'\w*_constr_{id}\w*')
-            constraits_dirs=list(filter(r.match, complex_dirs))
-            sample_list_id+=random.sample(constraits_dirs,size_constraits)
+            constraits_dirs=list(filter(r.match, complex_dirs)) # find dirs with constraits with ID==id via regexp r
+            sample_list_id+=random.sample(constraits_dirs,size_constraits) # random sampling constraits dirs from constraits dirs with ID==id
         if size_non_constraits>0:
             r=compile(fr'\d*_{id}_\w*')
-            non_constraits_dirs=list(filter(r.match,complex_dirs))
-            sample_list_id+=random.sample(non_constraits_dirs,size_non_constraits)
-        a=create_docked_equals_real(path_to_structures/sample_list_id[0],prefix=prefix_real)
-        sample_list_id+=size_real*[a]
-        sample_list+=sample_list_id
+            non_constraits_dirs=list(filter(r.match,complex_dirs)) # find dirs without constraits with ID==id via regexp
+            sample_list_id+=random.sample(non_constraits_dirs,size_non_constraits) # random sampling size_non_constraits dirs from non_constraits dirs with ID==id
+        a=create_docked_equals_real(path_to_structures/sample_list_id[0],prefix=prefix_real) # create a dir with "docked" structure equals real structure and lddt_scores equal to 1
+        sample_list_id+=size_real*[a] # add size_real structures to train dataset
+        sample_list+=sample_list_id # add samples with ID==id to train dataset
     return sample_list
     
 def list_from_file(path:str):
