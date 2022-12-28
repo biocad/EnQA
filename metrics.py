@@ -31,7 +31,7 @@ def get_chains_to_merge(path_to_structure:Path, ab_chain_names:list[str]):
     return chains_to_merge_1, chains_to_merge_2
 
 def parse_chains(comp_name:str):
-    _, chains, _ = comp_name.split('_')
+    chains= comp_name.split('_')[-1]
     ab_chains, ag_chains = chains.split('-')
     ab_chains_list = ab_chains.split('+')
     ag_chains_list = ag_chains.split('+')
@@ -86,15 +86,23 @@ def get_raw_mapping(path_to_complex_dir:Path,joined_name:str='joined',joined_pat
     
     return mapping_res
 
-def read_lddt(path: Path):
-    return pd.read_table(path, sep='\t', skiprows=10)
+def read_lddt(path: Path,flag=False):
+    if flag:
+        return pd.read_table(path, sep=',',index_col=6)
+    else:
+        return pd.read_table(path, sep='\t', skiprows=10)
 
 def get_values_from_lddt_results(path_to_complex:Path, mapping:dict, contacts:dict,lddt_list:list[float]=None):
-    lddt = read_lddt(path_to_complex / "lddt.csv")
+    flag= path_to_complex.name.split('_')[0]=='real'
+    lddt = read_lddt(path_to_complex / "lddt.csv",flag)
     if lddt_list is not None:
         lddt['Score']=lddt_list.item()
     aa_to_lddt = dict()
+    j=0
     for index, row in lddt.iterrows():
+        if flag and j==lddt.shape[0]:
+            break
+        j+=1
         aa_to_lddt[(row['Chain'], row['ResNum'], row['ResName'])] = row['Score']
     
     all_contacts = []
@@ -102,10 +110,11 @@ def get_values_from_lddt_results(path_to_complex:Path, mapping:dict, contacts:di
         all_contacts += v
 
     lddts = []
-#     print(mapping)
     for aa in all_contacts:
         mapped = mapping[aa]
         lddts.append(aa_to_lddt[mapped])
+    if not lddts:
+        print(path_to_complex)
     return lddts
     
 
@@ -122,10 +131,15 @@ def get_lddt_by_interface_and_irmsd(path_to_complex_dir:Path, threshold:float=6.
 
 
 def get_values_from_lddt_predictions(path_to_complex:Path, mapping:dict, contacts:dict,lddt_list:list[float]):
-    lddt = read_lddt(path_to_complex / "lddt.csv")
+    flag= path_to_complex.name.split('_')[0]=='real'
+    lddt = read_lddt(path_to_complex / "lddt.csv",flag)
     aa_to_lddt = dict()
+    j=0
     for index, row in lddt.iterrows():
-        aa_to_lddt[(row['Chain'], row['ResNum'], row['ResName'])] = index
+        if flag and j==lddt.shape[0]:
+            break
+        aa_to_lddt[(row['Chain'], row['ResNum'], row['ResName'])] = j
+        j+=1
     all_contacts = []
     for v in contacts.values():
         all_contacts += v
@@ -133,14 +147,18 @@ def get_values_from_lddt_predictions(path_to_complex:Path, mapping:dict, contact
     for aa in all_contacts:
         mapped = mapping[aa]
         lddts.append(aa_to_lddt[mapped])
+    if not lddts:
+        print(path_to_complex)
     return lddt_list[tensor(lddts)]
 
 def lddt_by_interface(path_docked:Path,sample:str,pred_lddt):
     path_to_complex=path_docked / sample
     ab_chains,ag_chains=parse_chains(sample)
     ab_chains,ag_chains=get_chains_to_merge(path_to_complex  / 'real.pdb',ab_chains)
+    if not ag_chains:
+        ab_chains,ag_chains=get_chains_to_merge(path_to_complex  / 'real.pdb',ab_chains[0].id)
     merge_chains(ab_chains,ag_chains,'ref_temp.pdb')
-    mapping=get_raw_mapping(path_to_complex,joined_path=path_to_complex/'real_joined.pdb')
+    mapping=get_raw_mapping(path_to_complex,joined_path=path_to_complex/'joined_real.pdb')
     contacts=get_interface(Path('ref_temp.pdb'))
     label_lddt_interface=get_values_from_lddt_results(path_to_complex, mapping, contacts)
     pred_lddt_interface=get_values_from_lddt_predictions(path_to_complex, mapping, contacts,pred_lddt)
