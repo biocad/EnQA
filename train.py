@@ -40,7 +40,7 @@ if __name__ == '__main__':
     if not os.path.isdir(args.output):
         os.mkdir(args.output)
 
-    path_docked=Path('/mnt/volume_complex_lddt/consistent')
+    path_docked=Path('/mnt/volume_complex_lddt/consistent_alpha_hedge')
     # /mnt/volume_complex_lddt/consistent_alpha_hedge
     dim2d = 25 + 9 * 5
     model = resEGNN_with_ne(dim2d=dim2d, dim1d=33)
@@ -93,6 +93,7 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
+                torch.cuda.empty_cache()
 
         print("Epoch: {} Train loss: {:.4f}".format(i, train_loss_sum / total_size_train))
         loss_score_valid=0
@@ -149,4 +150,4 @@ if __name__ == '__main__':
 # python3 train.py --train outputs/processed/ --validation outputs/processed/ --output outputs/ --epochs 15
 # python3 train.py --train /mnt/volume/outputs_vacation/processed --validation /mnt/volume/outputs_vacation/processed --output outputs/ --epochs
 # python3 train.py --train /mnt/volume/outputs_vacation/processed --validation /mnt/volume/outputs_vacation/processed --output outputs/ --epochs 2 --set-train train_small.txt --set-validation valid_small.txt
-# python3 train.py --train /mnt/volume/outputs_vacation/processed --validation /mnt/volume/outputs_vacation/processed --output outputs/ --epochs 2 --set-train train.txt --set-validation valid.txt 
+# python3 train.py --train /mnt/volume_complex_lddt/features --validation /mnt/volume_complex_lddt/features --output outputs/ --epochs 3000 --set-train train.txt --set-validation valid.txt 
